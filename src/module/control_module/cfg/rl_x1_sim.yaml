@@ -1,0 +1,451 @@
+control_frequecy: 1000
+use_sim_handles: True
+
+sub_joy_vel_name: /cmd_vel_limiter      # controller 接收的运动指令
+sub_imu_data_name: /imu/data            # IMU数据
+sub_joint_state_name: /joint_states     # 关节数据
+pub_joint_cmd_name: /joint_cmd          # 关节控制指令
+
+# Share complex-action trajectories with the real-robot configuration while
+# adapting PD gains to the MuJoCo actuator model.
+controller_import_file: ./cfg/control_module/rl_x1.yaml
+controller_imports: [pd_greet_nod, pd_salute, pd_fist_greeting, pd_clap, pd_heart,
+                     pd_welcome, pd_point_left, pd_point_right, pd_wipe_sweat,
+                     pd_scratch_head, pd_arm_dance, pd_bow_wave, pd_greeting_combo]
+controller_import_stiffness_scale: 4.0
+controller_import_damping_scale: 0.4
+
+# ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ control_modes list ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+robot_states:
+  # 空闲模式 
+  idle:
+    trigger_topic: /idle_mode
+    pre_states: [keep, stand_&_plan, keep_&_plan, walk_leg_&_plan, zero, stand, walk_leg, walk_leg_arm]
+    controllers: [pd_idle]
+  # keep模式
+  keep:
+    trigger_topic: /keep_mode
+    pre_states: [idle, stand_&_plan, keep_&_plan, wa_&_plan, zero, stand, walk_leg, walk_leg_arm]
+    controllers: [pd_keep]
+
+  # 零模式
+  zero:
+    trigger_topic: /zero_mode
+    pre_states: [idle, keep, stand, stand_&_plan]
+    controllers: [pd_zero]
+  # 站立模式
+  stand:
+    trigger_topic: /stand_mode
+    pre_states: [zero, stand_&_plan, keep_&_plan, walk_leg_&_plan, walk_leg, walk_leg_arm, wave_forearm, wave_arm, wave_wrist,
+                 greet_nod, salute, fist_greeting, clap, heart, welcome, point_left, point_right,
+                 wipe_sweat, scratch_head, arm_dance, bow_wave, greeting_combo]
+    controllers: [pd_zero, pd_stand]
+
+  # 行走模式1
+  walk_leg:
+    trigger_topic: /walk_mode
+    pre_states: [stand_&_plan, walk_leg_&_plan, stand, walk_leg_arm]
+    controllers: [pd_zero, pd_stand, rl_walk_leg]
+  # 行走模式2
+  walk_leg_arm:
+    trigger_topic: /walk_mode2
+    pre_states: [stand_&_plan, walk_leg_&_plan, stand, walk_leg]
+    controllers: [pd_zero, pd_stand, rl_walk_leg_shoulder]
+
+  # plan模式
+  stand_&_plan:
+    trigger_topic: /plan_mode
+    pre_states: [stand, stand_&_plan]
+    controllers: [pd_zero, pd_stand, pd_plan]
+  keep_&_plan:
+    trigger_topic: /plan_mode
+    pre_states: [keep, keep_&_plan]
+    controllers: [pd_keep, pd_plan]
+  walk_leg_&_plan:
+    trigger_topic: /plan_mode
+    pre_states: [walk_leg, walk_leg_&_plan]
+    controllers: [pd_zero, pd_stand, rl_walk_leg, pd_plan]
+  wave_forearm:
+    trigger_topic: /wave_forearm
+    pre_states: [stand, wave_forearm]
+    controllers: [pd_zero, pd_stand, pd_wave_forearm]
+  wave_arm:
+    trigger_topic: /wave_arm
+    pre_states: [stand, wave_arm]
+    controllers: [pd_zero, pd_stand, pd_wave_arm]
+  wave_wrist:
+    trigger_topic: /wave_wrist
+    pre_states: [stand, wave_wrist]
+    controllers: [pd_zero, pd_stand, pd_wave_wrist]
+  greet_nod:
+    trigger_topic: /greet_nod
+    pre_states: [stand, greet_nod]
+    controllers: [pd_zero, pd_stand, pd_greet_nod]
+  salute:
+    trigger_topic: /salute
+    pre_states: [stand, salute]
+    controllers: [pd_zero, pd_stand, pd_salute]
+  fist_greeting:
+    trigger_topic: /fist_greeting
+    pre_states: [stand, fist_greeting]
+    controllers: [pd_zero, pd_stand, pd_fist_greeting]
+  clap:
+    trigger_topic: /clap
+    pre_states: [stand, clap]
+    controllers: [pd_zero, pd_stand, pd_clap]
+  heart:
+    trigger_topic: /heart
+    pre_states: [stand, heart]
+    controllers: [pd_zero, pd_stand, pd_heart]
+  welcome:
+    trigger_topic: /welcome
+    pre_states: [stand, welcome]
+    controllers: [pd_zero, pd_stand, pd_welcome]
+  point_left:
+    trigger_topic: /point_left
+    pre_states: [stand, point_left]
+    controllers: [pd_zero, pd_stand, pd_point_left]
+  point_right:
+    trigger_topic: /point_right
+    pre_states: [stand, point_right]
+    controllers: [pd_zero, pd_stand, pd_point_right]
+  wipe_sweat:
+    trigger_topic: /wipe_sweat
+    pre_states: [stand, wipe_sweat]
+    controllers: [pd_zero, pd_stand, pd_wipe_sweat]
+  scratch_head:
+    trigger_topic: /scratch_head
+    pre_states: [stand, scratch_head]
+    controllers: [pd_zero, pd_stand, pd_scratch_head]
+  arm_dance:
+    trigger_topic: /arm_dance
+    pre_states: [stand, arm_dance]
+    controllers: [pd_zero, pd_stand, pd_arm_dance]
+  bow_wave:
+    trigger_topic: /bow_wave
+    pre_states: [stand, bow_wave]
+    controllers: [pd_zero, pd_stand, pd_bow_wave]
+  greeting_combo:
+    trigger_topic: /greeting_combo
+    pre_states: [stand, greeting_combo]
+    controllers: [pd_zero, pd_stand, pd_greeting_combo]
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+
+# ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ joint_list ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+joint_list:
+  - lumbar_yaw_joint
+  - lumbar_roll_joint 
+  - lumbar_pitch_joint
+  - left_shoulder_pitch_joint
+  - left_shoulder_roll_joint
+  - left_shoulder_yaw_joint
+  - left_elbow_pitch_joint
+  - left_elbow_yaw_joint
+  - left_wrist_pitch_joint
+  - left_wrist_roll_joint
+  - right_shoulder_pitch_joint
+  - right_shoulder_roll_joint
+  - right_shoulder_yaw_joint
+  - right_elbow_pitch_joint
+  - right_elbow_yaw_joint
+  - right_wrist_pitch_joint
+  - right_wrist_roll_joint
+  - left_hip_pitch_joint
+  - left_hip_roll_joint
+  - left_hip_yaw_joint
+  - left_knee_pitch_joint
+  - left_ankle_pitch_joint
+  - left_ankle_roll_joint
+  - right_hip_pitch_joint
+  - right_hip_roll_joint
+  - right_hip_yaw_joint
+  - right_knee_pitch_joint
+  - right_ankle_pitch_joint
+  - right_ankle_roll_joint
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+# ↓↓↓↓↓↓↓↓↓↓↓ 针对执行器标零后的真机装配偏移量，对与URDF不一致的关节进行补偿 ↓↓↓↓↓↓↓↓↓↓↓↓↓
+# ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ 仿真中没有偏置，都设为零 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+joint_offset:
+  lumbar_yaw_joint: 0.0
+  lumbar_roll_joint : 0.0
+  lumbar_pitch_joint: 0.0
+  left_shoulder_pitch_joint: 0.0
+  left_shoulder_roll_joint: 0.0
+  left_shoulder_yaw_joint: 0.0
+  left_elbow_pitch_joint: 0.0
+  left_elbow_yaw_joint: 0.0
+  left_wrist_pitch_joint: 0.0
+  left_wrist_roll_joint: 0.0
+  right_shoulder_pitch_joint: 0.0
+  right_shoulder_roll_joint: 0.0
+  right_shoulder_yaw_joint: 0.0
+  right_elbow_pitch_joint: 0.0
+  right_elbow_yaw_joint: 0.0
+  right_wrist_pitch_joint: 0.0
+  right_wrist_roll_joint: 0.0
+  left_hip_pitch_joint: 0.0
+  left_hip_roll_joint: 0.0
+  left_hip_yaw_joint: 0.0
+  left_knee_pitch_joint: 0.0
+  left_ankle_pitch_joint: 0.0
+  left_ankle_roll_joint: 0.0
+  right_hip_pitch_joint: 0.0
+  right_hip_roll_joint: 0.0
+  right_hip_yaw_joint: 0.0
+  right_knee_pitch_joint: 0.0
+  right_ankle_pitch_joint: 0.0
+  right_ankle_roll_joint: 0.0
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+
+# ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ controllers list ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+controllers:
+  # idle
+  pd_idle:
+    joint_list: [lumbar_yaw_joint, lumbar_roll_joint, lumbar_pitch_joint, 
+                left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint, left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, 
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0]
+    damping:    [0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+  # keep
+  pd_keep:
+    joint_list: [lumbar_yaw_joint, lumbar_roll_joint, lumbar_pitch_joint, 
+                left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint, left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, 
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.0,   0.0,   0.0,   
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0]
+    stiffness:  [700.0, 700.0, 700.0,
+                 300.0, 300.0, 30.0,  300.0, 30.0,  30.0,  30.0,
+                 300.0, 300.0, 30.0,  300.0, 30.0,  30.0,  30.0,
+                 250.0, 250.0, 250.0, 250.0, 200.0, 100.0,
+                 250.0, 250.0, 250.0, 250.0, 200.0, 100.0]
+    damping:    [0.6,   0.6,   0.6,
+                 0.6,   0.6,   0.1,   0.6,   0.1,   0.1,   0.1,
+                 0.6,   0.6,   0.1,   0.6,   0.1,   0.1,   0.1,
+                 0.4,   0.4,   0.4,   0.4,   0.6,   0.3,
+                 0.4,   0.4,   0.4,   0.4,   0.6,   0.3]
+    is_keep_controller: True  # keep控制器标志
+
+  # zero
+  pd_zero:
+    joint_list: [lumbar_yaw_joint, lumbar_roll_joint, lumbar_pitch_joint, 
+                left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint, left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, 
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,  
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0]
+    stiffness:  [700.0, 700.0, 700.0,
+                 300.0, 300.0, 30.0,  300.0, 30.0,  30.0,  30.0,
+                 300.0, 300.0, 30.0,  300.0, 30.0,  30.0,  30.0,
+                 250.0, 250.0, 250.0, 250.0, 200.0, 100.0,
+                 250.0, 250.0, 250.0, 250.0, 200.0, 100.0]
+    damping:    [0.6,   0.6,   0.6,
+                 0.6,   0.6,   0.1,   0.6,   0.1,   0.1,   0.1,
+                 0.6,   0.6,   0.1,   0.6,   0.1,   0.1,   0.1,
+                 0.4,   0.4,   0.4,   0.4,   0.6,   0.3,
+                 0.4,   0.4,   0.4,   0.4,   0.6,   0.3]
+
+  # stand
+  pd_stand:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_elbow_pitch_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_elbow_pitch_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint,
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint]
+    init_state: [0.15,  -0.1,  0.3,
+                 0.15,  -0.1,  0.3,
+                 0.4,   0.05,  -0.31, 0.49,  -0.21,
+                 -0.4, -0.05,  0.31,  0.49,  -0.21]
+    stiffness:  [300.0, 300.0, 300.0,
+                 300.0, 300.0, 300.0,
+                 250.0, 250.0, 250.0, 250.0, 200.0,
+                 250.0, 250.0, 250.0, 250.0, 200.0]
+    damping:    [0.6,   0.6,   0.6,
+                 0.6,   0.6,   0.6,
+                 0.4,   0.4,   0.4,   0.4,   0.6,
+                 0.4,   0.4,   0.4,   0.4,   0.6]
+
+  # plan
+  pd_plan:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint]
+    init_state: [0.0,   0.0,  0.0]
+    stiffness:  [300.0, 30.0, 300.0]
+    damping:    [0.6,   0.1,  0.6]
+    plan_conf: # plan控制器配置
+      trajectory_interpolator: [[0.4, -1.5,  0.0, 1.5],  # trans_time Data1 Data2 Data3
+                                [0.8, -1.5,  0.4, 1.5],
+                                [0.8, -1.5, -0.8, 1.5],
+                                [0.8, -1.5,  0.4, 1.5],
+                                [0.8, -1.5, -0.8, 1.5],
+                                [0.8, -1.5,  0.4, 1.5],
+                                [0.8, -1.5, -0.8, 1.5],
+                                [1.0, -1.5,  0.0, 1.5]]
+
+  pd_wave_forearm:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [220.0, 220.0, 160.0, 220.0, 120.0]
+    damping:    [0.8, 0.8, 0.5, 0.8, 0.4]
+    plan_conf:
+      max_velocity: 1.0
+      max_acceleration: 3.0
+      max_jerk: 10.0
+      lower_limits: [-1.60, -0.65, -0.60, 0.20, -0.50]
+      upper_limits: [-0.75, -0.10,  0.65, 1.55,  0.50]
+      trajectory_interpolator:
+        - [1.2, -1.25, -0.30,  0.05, 1.35,  0.00]
+        - [0.55, -1.25, -0.30,  0.45, 1.35,  0.20]
+        - [0.55, -1.25, -0.30, -0.35, 1.35, -0.20]
+        - [0.55, -1.25, -0.30,  0.45, 1.35,  0.20]
+        - [0.55, -1.25, -0.30, -0.35, 1.35, -0.20]
+        - [0.55, -1.25, -0.30,  0.45, 1.35,  0.20]
+        - [0.55, -1.25, -0.30, -0.35, 1.35, -0.20]
+        - [0.70, -1.25, -0.30,  0.05, 1.35,  0.00]
+
+  pd_wave_arm:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0]
+    stiffness:  [220.0, 220.0, 160.0, 220.0]
+    damping:    [0.8, 0.8, 0.5, 0.8]
+    plan_conf:
+      max_velocity: 0.9
+      max_acceleration: 2.5
+      max_jerk: 9.0
+      lower_limits: [-1.50, -0.70, -0.55, 0.30]
+      upper_limits: [-0.70, -0.10,  0.55, 1.10]
+      trajectory_interpolator:
+        - [1.3, -1.10, -0.35,  0.00, 0.75]
+        - [0.65, -1.10, -0.18,  0.35, 0.75]
+        - [0.65, -1.10, -0.55, -0.30, 0.75]
+        - [0.65, -1.10, -0.18,  0.35, 0.75]
+        - [0.65, -1.10, -0.55, -0.30, 0.75]
+        - [0.65, -1.10, -0.18,  0.35, 0.75]
+        - [0.65, -1.10, -0.55, -0.30, 0.75]
+        - [0.70, -1.10, -0.35,  0.00, 0.75]
+
+  pd_wave_wrist:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [220.0, 220.0, 160.0, 220.0, 120.0, 80.0]
+    damping:    [0.8, 0.8, 0.5, 0.8, 0.4, 0.3]
+    plan_conf:
+      max_velocity: 1.0
+      max_acceleration: 3.0
+      max_jerk: 10.0
+      lower_limits: [-1.60, -0.65, -0.30, 0.80, -0.40, -0.70]
+      upper_limits: [-0.75, -0.10,  0.30, 1.55,  0.40,  0.70]
+      trajectory_interpolator:
+        - [1.3, -1.25, -0.30, 0.05, 1.35, 0.00,  0.00]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00,  0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00, -0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00,  0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00, -0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00,  0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00, -0.55]
+        - [0.65, -1.25, -0.30, 0.05, 1.35, 0.00,  0.00]
+
+  # walk
+  rl_walk_leg:
+    joint_list: [left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint,
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.4,  0.05, -0.31, 0.49, -0.21, 0.0,
+                -0.4,  -0.05, 0.31, 0.49, -0.21, 0.0]
+    stiffness:  [30.0, 40.0, 35.0,  100.0, 35.0, 35.0,
+              30.0, 40.0,  35.0, 100.0, 35.0, 35.0]
+    damping:    [3.0,  3.0,  4.0,   10.0,  0.5,  0.5,
+                 3.0,  3.0,   4.0,  10.0,  0.5,  0.5]
+    walk_step_conf:
+      action_scale: 0.5    # 推理的增量结果，缩放系数
+      decimation: 10       # 采样间隔
+      cycle_time: 0.7      # 步态周期
+      sw_mode: True        # 原地步态是否接受周期波函数
+      cmd_threshold: 0.05 
+    obs_scales:
+      lin_vel: 2.
+      ang_vel: 1.
+      dof_pos: 1.
+      dof_vel: 0.05
+      quat: 1.
+    onnx_conf:
+      policy_file: cfg/control_module/policy/rl_walk_leg.onnx
+      actions_size: 12
+      observations_size: 47
+      num_hist: 66
+      observations_clip: 100.
+      actions_clip: 100.
+    lpf_conf:
+      wc: 100.
+      ts: 0.001
+      paralle_list:
+        - left_ankle_pitch_joint
+        - left_ankle_roll_joint
+        - right_ankle_pitch_joint
+        - right_ankle_roll_joint
+
+  # leg and arm
+  rl_walk_leg_shoulder:
+    joint_list: [left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, left_shoulder_pitch_joint,
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint, right_shoulder_pitch_joint]
+    init_state: [0.4,  0.05, -0.31, 0.49, -0.21, 0.0,  0.15,
+                -0.4, -0.05,  0.31, 0.49, -0.21, 0.0,  0.15]
+    stiffness:  [60.0, 60.0, 40.0,  80.0, 40.0,  30.0, 20.0,
+                 60.0, 60.0, 40.0,  80.0, 40.0,  30.0, 20.0]
+    damping:    [6.0,  3.0,  3.0,   4.0,  2.0,   2.0,  3.0,
+                 6.0,  3.0,  3.0,   4.0,  2.0,   2.0,  3.0 ]
+    walk_step_conf:
+      action_scale: 0.5    # 推理的增量结果，缩放系数
+      decimation: 10       # 采样间隔
+      cycle_time: 1      # 步态周期
+      sw_mode: True        # 原地步态是否接受周期波函数
+      cmd_threshold: 0.05 
+    obs_scales:
+      lin_vel: 2.
+      ang_vel: 1.
+      dof_pos: 1.
+      dof_vel: 0.05
+      quat: 1.
+    onnx_conf:
+      policy_file: cfg/control_module/policy/rl_walk_leg_shoulder.onnx
+      actions_size: 14
+      observations_size: 53
+      num_hist: 66
+      observations_clip: 100.
+      actions_clip: 100.
+    lpf_conf:
+      wc: 100.
+      ts: 0.001
+      paralle_list:
+        - left_ankle_pitch_joint
+        - left_ankle_roll_joint
+        - right_ankle_pitch_joint
+        - right_ankle_roll_joint
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑

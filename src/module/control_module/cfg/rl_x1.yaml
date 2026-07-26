@@ -1,0 +1,750 @@
+control_frequecy: 1000
+use_sim_handles: False
+
+sub_joy_vel_name: /cmd_vel_limiter      # controller 接收的运动指令
+sub_imu_data_name: /imu/data            # IMU数据
+sub_joint_state_name: /joint_states     # 关节数据
+pub_joint_cmd_name: /joint_cmd          # 关节控制指令
+
+# ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ control_modes list ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+robot_states:
+  # 空闲模式 
+  idle:
+    trigger_topic: /idle_mode
+    pre_states: [keep, stand_&_plan, keep_&_plan, walk_leg_&_plan, zero, stand, walk_leg, walk_leg_arm]
+    controllers: [pd_idle]
+  # keep模式
+  keep:
+    trigger_topic: /keep_mode
+    pre_states: [idle, stand_&_plan, keep_&_plan, wa_&_plan, zero, stand, walk_leg, walk_leg_arm]
+    controllers: [pd_keep]
+
+  # 零模式
+  zero:
+    trigger_topic: /zero_mode
+    pre_states: [idle, keep, stand, stand_&_plan]
+    controllers: [pd_zero]
+  # 站立模式
+  stand:
+    trigger_topic: /stand_mode
+    pre_states: [zero, stand_&_plan, keep_&_plan, walk_leg_&_plan, walk_leg, walk_leg_arm, wave_forearm, wave_arm, wave_wrist,
+                 greet_nod, salute, fist_greeting, clap, heart, welcome, point_left, point_right,
+                 wipe_sweat, scratch_head, arm_dance, bow_wave, greeting_combo]
+    controllers: [pd_zero, pd_stand]
+
+  # 行走模式1
+  walk_leg:
+    trigger_topic: /walk_mode
+    pre_states: [stand_&_plan, walk_leg_&_plan, stand, walk_leg_arm]
+    controllers: [pd_zero, pd_stand, rl_walk_leg]
+  # 行走模式2
+  walk_leg_arm:
+    trigger_topic: /walk_mode2
+    pre_states: [stand_&_plan, walk_leg_&_plan, stand, walk_leg]
+    controllers: [pd_zero, pd_stand, rl_walk_leg_shoulder]
+
+  # plan模式
+  stand_&_plan:
+    trigger_topic: /plan_mode
+    pre_states: [stand, stand_&_plan]
+    controllers: [pd_zero, pd_stand, pd_plan]
+  keep_&_plan:
+    trigger_topic: /plan_mode
+    pre_states: [keep, keep_&_plan]
+    controllers: [pd_keep, pd_plan]
+  walk_leg_&_plan:
+    trigger_topic: /plan_mode
+    pre_states: [walk_leg, walk_leg_&_plan]
+    controllers: [pd_zero, pd_stand, rl_walk_leg, pd_plan]
+  wave_forearm:
+    trigger_topic: /wave_forearm
+    pre_states: [stand, wave_forearm]
+    controllers: [pd_zero, pd_stand, pd_wave_forearm]
+  wave_arm:
+    trigger_topic: /wave_arm
+    pre_states: [stand, wave_arm]
+    controllers: [pd_zero, pd_stand, pd_wave_arm]
+  wave_wrist:
+    trigger_topic: /wave_wrist
+    pre_states: [stand, wave_wrist]
+    controllers: [pd_zero, pd_stand, pd_wave_wrist]
+  greet_nod:
+    trigger_topic: /greet_nod
+    pre_states: [stand, greet_nod]
+    controllers: [pd_zero, pd_stand, pd_greet_nod]
+  salute:
+    trigger_topic: /salute
+    pre_states: [stand, salute]
+    controllers: [pd_zero, pd_stand, pd_salute]
+  fist_greeting:
+    trigger_topic: /fist_greeting
+    pre_states: [stand, fist_greeting]
+    controllers: [pd_zero, pd_stand, pd_fist_greeting]
+  clap:
+    trigger_topic: /clap
+    pre_states: [stand, clap]
+    controllers: [pd_zero, pd_stand, pd_clap]
+  heart:
+    trigger_topic: /heart
+    pre_states: [stand, heart]
+    controllers: [pd_zero, pd_stand, pd_heart]
+  welcome:
+    trigger_topic: /welcome
+    pre_states: [stand, welcome]
+    controllers: [pd_zero, pd_stand, pd_welcome]
+  point_left:
+    trigger_topic: /point_left
+    pre_states: [stand, point_left]
+    controllers: [pd_zero, pd_stand, pd_point_left]
+  point_right:
+    trigger_topic: /point_right
+    pre_states: [stand, point_right]
+    controllers: [pd_zero, pd_stand, pd_point_right]
+  wipe_sweat:
+    trigger_topic: /wipe_sweat
+    pre_states: [stand, wipe_sweat]
+    controllers: [pd_zero, pd_stand, pd_wipe_sweat]
+  scratch_head:
+    trigger_topic: /scratch_head
+    pre_states: [stand, scratch_head]
+    controllers: [pd_zero, pd_stand, pd_scratch_head]
+  arm_dance:
+    trigger_topic: /arm_dance
+    pre_states: [stand, arm_dance]
+    controllers: [pd_zero, pd_stand, pd_arm_dance]
+  bow_wave:
+    trigger_topic: /bow_wave
+    pre_states: [stand, bow_wave]
+    controllers: [pd_zero, pd_stand, pd_bow_wave]
+  greeting_combo:
+    trigger_topic: /greeting_combo
+    pre_states: [stand, greeting_combo]
+    controllers: [pd_zero, pd_stand, pd_greeting_combo]
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+
+# ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ joint_list ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+joint_list:
+  - lumbar_yaw_joint
+  - lumbar_roll_joint 
+  - lumbar_pitch_joint
+  - left_shoulder_pitch_joint
+  - left_shoulder_roll_joint
+  - left_shoulder_yaw_joint
+  - left_elbow_pitch_joint
+  - left_elbow_yaw_joint
+  - left_wrist_pitch_joint
+  - left_wrist_roll_joint
+  - right_shoulder_pitch_joint
+  - right_shoulder_roll_joint
+  - right_shoulder_yaw_joint
+  - right_elbow_pitch_joint
+  - right_elbow_yaw_joint
+  - right_wrist_pitch_joint
+  - right_wrist_roll_joint
+  - left_hip_pitch_joint
+  - left_hip_roll_joint
+  - left_hip_yaw_joint
+  - left_knee_pitch_joint
+  - left_ankle_pitch_joint
+  - left_ankle_roll_joint
+  - right_hip_pitch_joint
+  - right_hip_roll_joint
+  - right_hip_yaw_joint
+  - right_knee_pitch_joint
+  - right_ankle_pitch_joint
+  - right_ankle_roll_joint
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+# ↓↓↓↓↓↓↓↓↓↓↓ 针对执行器标零后的真机装配偏移量，对与URDF不一致的关节进行补偿 ↓↓↓↓↓↓↓↓↓↓↓↓↓
+joint_offset:
+  lumbar_yaw_joint: 0.0
+  lumbar_roll_joint : 0.0
+  lumbar_pitch_joint: 0.0
+  left_shoulder_pitch_joint: 0.0
+  left_shoulder_roll_joint: 0.0
+  left_shoulder_yaw_joint: 0.0
+  left_elbow_pitch_joint: 0.0
+  left_elbow_yaw_joint: 0.0
+  left_wrist_pitch_joint: 0.0
+  left_wrist_roll_joint: 0.0
+  right_shoulder_pitch_joint: 0.0
+  right_shoulder_roll_joint: 0.0
+  right_shoulder_yaw_joint: 0.0
+  right_elbow_pitch_joint: 0.0
+  right_elbow_yaw_joint: 0.0
+  right_wrist_pitch_joint: 0.0
+  right_wrist_roll_joint: 0.0
+  left_hip_pitch_joint: 0.0
+  left_hip_roll_joint: 0.0
+  left_hip_yaw_joint: 0.0
+  left_knee_pitch_joint: 0.0
+  left_ankle_pitch_joint: 0.0
+  left_ankle_roll_joint: 0.0
+  right_hip_pitch_joint: 0.0
+  right_hip_roll_joint: 0.0
+  right_hip_yaw_joint: 0.0
+  right_knee_pitch_joint: 0.0
+  right_ankle_pitch_joint: 0.0
+  right_ankle_roll_joint: 0.0
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+
+
+# ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓ controllers list ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+controllers:
+  # idle
+  pd_idle:
+    joint_list: [lumbar_yaw_joint, lumbar_roll_joint, lumbar_pitch_joint, 
+                left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint, left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, 
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0]
+    damping:    [0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+  # keep
+  pd_keep:
+    joint_list: [lumbar_yaw_joint, lumbar_roll_joint, lumbar_pitch_joint, 
+                left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint, left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, 
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.0,   0.0,   0.0,   
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0]
+    stiffness:  [500.0, 500.0, 500.0,
+                 80.0,  80.0,  80.0,  80.0,  80.0,  80.0, 80.0, 
+                 80.0,  80.0,  80.0,  80.0,  80.0,  80.0, 80.0, 
+                 300.0, 300.0, 300.0, 300.0, 300.0, 300.0, 
+                 300.0, 300.0, 300.0, 300.0, 300.0, 300.0]
+    damping:    [5.0,   5.0,   5.0,
+                 1.5,   1.5,   1.5,  1.5, 1.5, 1.5, 1.5,
+                 1.5,   1.5,   1.5,  1.5, 1.5, 1.5, 1.5,
+                 5.0,   5.0,   5.0,  5.0, 5.0, 5.0,
+                 5.0,   5.0,   5.0,  5.0, 5.0, 5.0]
+    is_keep_controller: True  # keep控制器标志
+
+  # zero
+  pd_zero:
+    joint_list: [lumbar_yaw_joint, lumbar_roll_joint, lumbar_pitch_joint, 
+                left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint, left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, 
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0,
+                 0.0,   0.0,   0.0,   0.0,   0.0,   0.0]
+    stiffness:  [500.0, 500.0, 500.0, 
+                 80.0,  80.0,  80.0,  80.0,  80.0,  80.0,  80.0,
+                 80.0,  80.0,  80.0,  80.0,  80.0,  80.0,  80.0,
+                 300.0, 300.0, 300.0, 300.0, 300.0, 300.0,
+                 300.0, 300.0, 300.0, 300.0, 300.0, 300.0]
+    damping:    [5.0,   5.0,   5.0,
+                 1.5,   1.5,   1.5,   1.5,   1.5,   1.5,   1.5,
+                 1.5,   1.5,   1.5,   1.5,   1.5,   1.5,   1.5,
+                 5.0,   5.0,   5.0,   5.0,   5.0,   5.0,
+                 5.0,   5.0,   5.0,   5.0,   5.0,   5.0]
+
+  # stand
+  pd_stand:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_elbow_pitch_joint, 
+                right_shoulder_pitch_joint, right_shoulder_roll_joint, right_elbow_pitch_joint, 
+                left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint,
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint]
+    init_state: [0.15,  -0.1,  0.3,   
+                 0.15,  -0.1,  0.3,
+                 0.4,   0.05,  -0.31, 0.49,  -0.21,
+                 -0.4, -0.05,  0.31,  0.49,  -0.21]
+    stiffness:  [80.0,  80.0,  80.0,
+                 80.0,  80.0,  80.0,
+                 300.0, 300.0, 300.0, 300.0, 300.0,
+                 300.0, 300.0, 300.0, 300.0, 300.0]
+    damping:    [1.5,   1.5,   1.5,
+                 1.5,   1.5,   1.5,
+                 5.0,   5.0,   5.0,   5.0,   5.0,
+                 5.0,   5.0,   5.0,   5.0,   5.0  ]
+
+  # plan
+  pd_plan:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_yaw_joint, right_elbow_pitch_joint]
+    init_state: [0.0,   0.0,  0.0]
+    stiffness:  [80.0,  80.0, 80.0]
+    damping:    [1.5,   1.5,  1.5]
+    plan_conf: # plan控制器配置
+      trajectory_interpolator: [[0.4, -1.5,  0.0, 1.5],  # trans_time Data1 Data2 Data3
+                                [0.8, -1.5,  0.8, 1.5],
+                                [0.8, -1.5, -0.8, 1.5],
+                                [0.8, -1.5,  0.8, 1.5],
+                                [0.8, -1.5, -0.8, 1.5],
+                                [0.8, -1.5,  0.8, 1.5],
+                                [0.8, -1.5, -0.8, 1.5],
+                                [1.0, -1.5,  0.0, 1.5]]
+
+  # Human-like greeting: raise the right forearm beside the head and wave.
+  pd_wave_forearm:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [55.0, 55.0, 45.0, 55.0, 35.0]
+    damping:    [2.0, 2.0, 1.5, 2.0, 1.2]
+    plan_conf:
+      max_velocity: 0.85
+      max_acceleration: 2.5
+      max_jerk: 8.0
+      lower_limits: [-1.60, -0.65, -0.60, 0.20, -0.50]
+      upper_limits: [-0.75, -0.10,  0.65, 1.55,  0.50]
+      trajectory_interpolator:
+        - [1.2, -1.25, -0.30,  0.05, 1.35,  0.00]
+        - [0.55, -1.25, -0.30,  0.45, 1.35,  0.20]
+        - [0.55, -1.25, -0.30, -0.35, 1.35, -0.20]
+        - [0.55, -1.25, -0.30,  0.45, 1.35,  0.20]
+        - [0.55, -1.25, -0.30, -0.35, 1.35, -0.20]
+        - [0.55, -1.25, -0.30,  0.45, 1.35,  0.20]
+        - [0.55, -1.25, -0.30, -0.35, 1.35, -0.20]
+        - [0.70, -1.25, -0.30,  0.05, 1.35,  0.00]
+
+  # Broad wave driven mainly by the shoulder.
+  pd_wave_arm:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0]
+    stiffness:  [55.0, 55.0, 45.0, 55.0]
+    damping:    [2.0, 2.0, 1.5, 2.0]
+    plan_conf:
+      max_velocity: 0.75
+      max_acceleration: 2.0
+      max_jerk: 7.0
+      lower_limits: [-1.50, -0.70, -0.55, 0.30]
+      upper_limits: [-0.70, -0.10,  0.55, 1.10]
+      trajectory_interpolator:
+        - [1.3, -1.10, -0.35,  0.00, 0.75]
+        - [0.65, -1.10, -0.18,  0.35, 0.75]
+        - [0.65, -1.10, -0.55, -0.30, 0.75]
+        - [0.65, -1.10, -0.18,  0.35, 0.75]
+        - [0.65, -1.10, -0.55, -0.30, 0.75]
+        - [0.65, -1.10, -0.18,  0.35, 0.75]
+        - [0.65, -1.10, -0.55, -0.30, 0.75]
+        - [0.70, -1.10, -0.35,  0.00, 0.75]
+
+  # Keep the arm raised and wave with the wrist; the claw is not commanded.
+  pd_wave_wrist:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [55.0, 55.0, 45.0, 55.0, 35.0, 25.0]
+    damping:    [2.0, 2.0, 1.5, 2.0, 1.2, 0.8]
+    plan_conf:
+      max_velocity: 0.90
+      max_acceleration: 2.5
+      max_jerk: 8.0
+      lower_limits: [-1.60, -0.65, -0.30, 0.80, -0.40, -0.70]
+      upper_limits: [-0.75, -0.10,  0.30, 1.55,  0.40,  0.70]
+      trajectory_interpolator:
+        - [1.3, -1.25, -0.30, 0.05, 1.35, 0.00,  0.00]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00,  0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00, -0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00,  0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00, -0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00,  0.55]
+        - [0.45, -1.25, -0.30, 0.05, 1.35, 0.00, -0.55]
+        - [0.65, -1.25, -0.30, 0.05, 1.35, 0.00,  0.00]
+
+  # There is no controllable head joint in this project, so a small waist
+  # pitch motion is used to visually approximate nodding while waving.
+  pd_greet_nod:
+    joint_list: [lumbar_pitch_joint, right_shoulder_pitch_joint, right_shoulder_roll_joint,
+                 right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [160.0, 55.0, 55.0, 45.0, 55.0, 35.0]
+    damping:    [4.0, 2.0, 2.0, 1.5, 2.0, 1.2]
+    plan_conf:
+      max_velocity: 0.70
+      max_acceleration: 2.0
+      max_jerk: 6.0
+      lower_limits: [0.00, -1.55, -0.60, -0.55, 0.40, -0.45]
+      upper_limits: [0.22, -0.70, -0.10,  0.60, 1.55,  0.45]
+      trajectory_interpolator:
+        - [1.3, 0.00, -1.20, -0.30,  0.05, 1.30,  0.00]
+        - [0.55, 0.14, -1.20, -0.30,  0.40, 1.30,  0.15]
+        - [0.55, 0.02, -1.20, -0.30, -0.30, 1.30, -0.15]
+        - [0.55, 0.14, -1.20, -0.30,  0.40, 1.30,  0.15]
+        - [0.55, 0.02, -1.20, -0.30, -0.30, 1.30, -0.15]
+        - [0.70, 0.00, -1.20, -0.30,  0.05, 1.30,  0.00]
+
+  pd_salute:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint,
+                 right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [55.0, 55.0, 45.0, 55.0, 35.0, 25.0, 25.0]
+    damping:    [2.0, 2.0, 1.5, 2.0, 1.2, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.65
+      max_acceleration: 1.8
+      max_jerk: 6.0
+      lower_limits: [-1.35, -0.55, -0.20, 0.50, -0.30, -0.35, -0.35]
+      upper_limits: [-0.55, -0.10,  0.65, 1.50,  0.50,  0.25,  0.35]
+      trajectory_interpolator:
+        - [1.4, -0.85, -0.28, 0.38, 1.20, 0.22, -0.12, 0.12]
+        - [0.8, -0.85, -0.28, 0.42, 1.20, 0.18, -0.08, 0.08]
+
+  # Approximate clasped-fist greeting: hands stop apart to avoid collision.
+  pd_fist_greeting:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint,
+                 left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint,
+                 right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0,
+                 50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8,
+                 2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.60
+      max_acceleration: 1.6
+      max_jerk: 5.0
+      lower_limits: [-0.90, -0.55, -0.80, 0.50, -0.60, -0.40, -0.50,
+                     -0.90, -0.55, -0.80, 0.50, -0.60, -0.40, -0.50]
+      upper_limits: [-0.20, -0.10,  0.80, 1.55,  0.60,  0.40,  0.50,
+                     -0.20, -0.10,  0.80, 1.55,  0.60,  0.40,  0.50]
+      trajectory_interpolator:
+        - [1.5, -0.52, -0.30, -0.42, 1.28, -0.18, 0.08, -0.10,
+                -0.52, -0.30,  0.42, 1.28,  0.18, 0.08,  0.10]
+        - [0.8, -0.48, -0.28, -0.38, 1.22, -0.12, 0.04, -0.06,
+                -0.48, -0.28,  0.38, 1.22,  0.12, 0.04,  0.06]
+
+  # Visual clap with a deliberate gap; hands never receive a hard-contact target.
+  pd_clap:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint,
+                 left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint,
+                 right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [48.0, 48.0, 38.0, 48.0, 28.0, 20.0, 20.0,
+                 48.0, 48.0, 38.0, 48.0, 28.0, 20.0, 20.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.0, 0.8, 0.8,
+                 2.0, 2.0, 1.4, 2.0, 1.0, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.65
+      max_acceleration: 1.8
+      max_jerk: 5.0
+      lower_limits: [-0.85, -0.60, -0.80, 0.45, -0.50, -0.35, -0.50,
+                     -0.85, -0.60, -0.80, 0.45, -0.50, -0.35, -0.50]
+      upper_limits: [-0.20, -0.10,  0.80, 1.45,  0.50,  0.35,  0.50,
+                     -0.20, -0.10,  0.80, 1.45,  0.50,  0.35,  0.50]
+      trajectory_interpolator:
+        - [1.4, -0.48, -0.42, -0.30, 1.08, -0.10, 0.00, 0.00,
+                -0.48, -0.42,  0.30, 1.08,  0.10, 0.00, 0.00]
+        - [0.50, -0.48, -0.24, -0.48, 1.18, -0.10, 0.00, 0.00,
+                 -0.48, -0.24,  0.48, 1.18,  0.10, 0.00, 0.00]
+        - [0.50, -0.48, -0.42, -0.30, 1.08, -0.10, 0.00, 0.00,
+                 -0.48, -0.42,  0.30, 1.08,  0.10, 0.00, 0.00]
+        - [0.50, -0.48, -0.24, -0.48, 1.18, -0.10, 0.00, 0.00,
+                 -0.48, -0.24,  0.48, 1.18,  0.10, 0.00, 0.00]
+        - [0.50, -0.48, -0.42, -0.30, 1.08, -0.10, 0.00, 0.00,
+                 -0.48, -0.42,  0.30, 1.08,  0.10, 0.00, 0.00]
+        - [0.50, -0.48, -0.24, -0.48, 1.18, -0.10, 0.00, 0.00,
+                 -0.48, -0.24,  0.48, 1.18,  0.10, 0.00, 0.00]
+
+  # Arm-shaped heart; finger shaping is not possible with the X1 claw.
+  pd_heart:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint,
+                 left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint,
+                 right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [48.0, 48.0, 38.0, 48.0, 28.0, 20.0, 20.0,
+                 48.0, 48.0, 38.0, 48.0, 28.0, 20.0, 20.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.0, 0.8, 0.8,
+                 2.0, 2.0, 1.4, 2.0, 1.0, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.55
+      max_acceleration: 1.5
+      max_jerk: 5.0
+      lower_limits: [-1.20, -0.80, -0.80, 0.60, -0.60, -0.50, -0.70,
+                     -1.20, -0.80, -0.80, 0.60, -0.60, -0.50, -0.70]
+      upper_limits: [-0.30, -0.10,  0.80, 1.55,  0.60,  0.50,  0.70,
+                     -0.30, -0.10,  0.80, 1.55,  0.60,  0.50,  0.70]
+      trajectory_interpolator:
+        - [1.7, -0.82, -0.48, -0.38, 1.38, -0.22, -0.18, -0.28,
+                -0.82, -0.48,  0.38, 1.38,  0.22, -0.18,  0.28]
+        - [0.9, -0.78, -0.44, -0.34, 1.32, -0.18, -0.14, -0.22,
+                -0.78, -0.44,  0.34, 1.32,  0.18, -0.14,  0.22]
+
+  pd_welcome:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint,
+                 left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint,
+                 right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0,
+                 50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8,
+                 2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.65
+      max_acceleration: 1.8
+      max_jerk: 6.0
+      lower_limits: [-0.90, -1.25, -0.55, 0.25, -0.40, -0.40, -0.50,
+                     -0.90, -1.25, -0.55, 0.25, -0.40, -0.40, -0.50]
+      upper_limits: [-0.15, -0.10,  0.55, 1.20,  0.40,  0.40,  0.50,
+                     -0.15, -0.10,  0.55, 1.20,  0.40,  0.40,  0.50]
+      trajectory_interpolator:
+        - [1.5, -0.42, -1.00, -0.12, 0.52, 0.00, 0.05, -0.10,
+                -0.42, -1.00,  0.12, 0.52, 0.00, 0.05,  0.10]
+        - [1.0, -0.38, -0.35, -0.28, 0.82, -0.10, 0.00, -0.05,
+                -0.38, -0.35,  0.28, 0.82,  0.10, 0.00,  0.05]
+
+  pd_point_left:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint,
+                 left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.55
+      max_acceleration: 1.5
+      max_jerk: 5.0
+      lower_limits: [-0.85, -1.30, -0.60, 0.15, -0.40, -0.40, -0.50]
+      upper_limits: [-0.10, -0.20,  0.60, 0.90,  0.40,  0.40,  0.50]
+      trajectory_interpolator:
+        - [1.5, -0.35, -1.05, -0.10, 0.32, 0.00, 0.00, -0.08]
+        - [0.8, -0.32, -1.00, -0.08, 0.28, 0.00, 0.00, -0.04]
+
+  pd_point_right:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint,
+                 right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.55
+      max_acceleration: 1.5
+      max_jerk: 5.0
+      lower_limits: [-0.85, -1.30, -0.60, 0.15, -0.40, -0.40, -0.50]
+      upper_limits: [-0.10, -0.20,  0.60, 0.90,  0.40,  0.40,  0.50]
+      trajectory_interpolator:
+        - [1.5, -0.35, -1.05, 0.10, 0.32, 0.00, 0.00, 0.08]
+        - [0.8, -0.32, -1.00, 0.08, 0.28, 0.00, 0.00, 0.04]
+
+  # Keep a clearance from the face; tune only after simulation inspection.
+  pd_wipe_sweat:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint,
+                 right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [48.0, 48.0, 38.0, 48.0, 28.0, 20.0, 20.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.0, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.50
+      max_acceleration: 1.4
+      max_jerk: 4.5
+      lower_limits: [-1.45, -0.60, -0.45, 0.65, -0.50, -0.50, -0.60]
+      upper_limits: [-0.65, -0.10,  0.65, 1.55,  0.55,  0.50,  0.60]
+      trajectory_interpolator:
+        - [1.6, -1.05, -0.30, 0.28, 1.38, 0.18, -0.18, 0.12]
+        - [0.60, -1.05, -0.30, 0.48, 1.38, 0.18, -0.18, 0.12]
+        - [0.60, -1.05, -0.30, 0.08, 1.38, 0.18, -0.18, 0.12]
+        - [0.60, -1.05, -0.30, 0.48, 1.38, 0.18, -0.18, 0.12]
+
+  pd_scratch_head:
+    joint_list: [right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint,
+                 right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [48.0, 48.0, 38.0, 48.0, 28.0, 20.0, 20.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.0, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.48
+      max_acceleration: 1.3
+      max_jerk: 4.0
+      lower_limits: [-1.55, -0.70, -0.35, 0.80, -0.55, -0.55, -0.65]
+      upper_limits: [-0.70, -0.10,  0.70, 1.60,  0.55,  0.55,  0.65]
+      trajectory_interpolator:
+        - [1.7, -1.22, -0.38, 0.30, 1.48, 0.22, -0.12, 0.18]
+        - [0.45, -1.18, -0.38, 0.42, 1.42, 0.18, -0.08, 0.28]
+        - [0.45, -1.26, -0.38, 0.20, 1.50, 0.26, -0.16, 0.08]
+        - [0.45, -1.18, -0.38, 0.42, 1.42, 0.18, -0.08, 0.28]
+        - [0.45, -1.26, -0.38, 0.20, 1.50, 0.26, -0.16, 0.08]
+
+  pd_arm_dance:
+    joint_list: [lumbar_yaw_joint, lumbar_roll_joint,
+                 left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint,
+                 left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint,
+                 right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [140.0, 140.0, 45.0, 45.0, 35.0, 45.0, 28.0, 20.0, 20.0,
+                 45.0, 45.0, 35.0, 45.0, 28.0, 20.0, 20.0]
+    damping:    [4.0, 4.0, 2.0, 2.0, 1.3, 2.0, 1.0, 0.8, 0.8,
+                 2.0, 2.0, 1.3, 2.0, 1.0, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.65
+      max_acceleration: 1.7
+      max_jerk: 5.5
+      lower_limits: [-0.20, -0.12, -1.35, -1.10, -0.70, 0.25, -0.50, -0.45, -0.65,
+                     -1.35, -1.10, -0.70, 0.25, -0.50, -0.45, -0.65]
+      upper_limits: [ 0.20,  0.12, -0.15, -0.10,  0.70, 1.35,  0.50,  0.45,  0.65,
+                     -0.15, -0.10,  0.70, 1.35,  0.50,  0.45,  0.65]
+      trajectory_interpolator:
+        - [1.2,  0.10,  0.06, -0.95, -0.75, -0.20, 0.70, -0.10,  0.10, -0.20,
+                              -0.35, -0.35,  0.30, 1.05,  0.18, -0.08,  0.20]
+        - [0.75, -0.10, -0.06, -0.35, -0.35, -0.30, 1.05, -0.18, -0.08, -0.20,
+                               -0.95, -0.75,  0.20, 0.70,  0.10,  0.10,  0.20]
+        - [0.75,  0.12,  0.06, -1.10, -0.55,  0.35, 0.55,  0.15,  0.10,  0.35,
+                              -0.55, -0.45, -0.35, 0.95, -0.15, -0.10, -0.35]
+        - [0.75, -0.12, -0.06, -0.55, -0.45,  0.35, 0.95,  0.15, -0.10,  0.35,
+                               -1.10, -0.55, -0.35, 0.55, -0.15,  0.10, -0.35]
+        - [0.90,  0.00,  0.00, -0.55, -0.85,  0.00, 0.55,  0.00,  0.00,  0.00,
+                              -0.55, -0.85,  0.00, 0.55,  0.00,  0.00,  0.00]
+
+  pd_bow_wave:
+    joint_list: [lumbar_pitch_joint, right_shoulder_pitch_joint, right_shoulder_roll_joint,
+                 right_shoulder_yaw_joint, right_elbow_pitch_joint, right_elbow_yaw_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [170.0, 52.0, 52.0, 42.0, 52.0, 32.0]
+    damping:    [4.5, 2.0, 2.0, 1.5, 2.0, 1.1]
+    plan_conf:
+      max_velocity: 0.55
+      max_acceleration: 1.5
+      max_jerk: 5.0
+      lower_limits: [0.00, -1.50, -0.60, -0.55, 0.50, -0.45]
+      upper_limits: [0.25, -0.65, -0.10,  0.60, 1.55,  0.45]
+      trajectory_interpolator:
+        - [1.3, 0.20, -0.80, -0.25,  0.05, 1.00,  0.00]
+        - [0.9, 0.00, -1.20, -0.30,  0.05, 1.32,  0.00]
+        - [0.55, 0.00, -1.20, -0.30,  0.42, 1.32,  0.15]
+        - [0.55, 0.00, -1.20, -0.30, -0.32, 1.32, -0.15]
+        - [0.55, 0.00, -1.20, -0.30,  0.42, 1.32,  0.15]
+        - [0.55, 0.00, -1.20, -0.30, -0.32, 1.32, -0.15]
+        - [0.65, 0.00, -1.20, -0.30,  0.05, 1.32,  0.00]
+
+  # Wave -> salute -> open both arms -> return to the captured stand pose.
+  pd_greeting_combo:
+    joint_list: [left_shoulder_pitch_joint, left_shoulder_roll_joint, left_shoulder_yaw_joint,
+                 left_elbow_pitch_joint, left_elbow_yaw_joint, left_wrist_pitch_joint, left_wrist_roll_joint,
+                 right_shoulder_pitch_joint, right_shoulder_roll_joint, right_shoulder_yaw_joint,
+                 right_elbow_pitch_joint, right_elbow_yaw_joint, right_wrist_pitch_joint, right_wrist_roll_joint]
+    init_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    stiffness:  [50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0,
+                 50.0, 50.0, 40.0, 50.0, 30.0, 22.0, 22.0]
+    damping:    [2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8,
+                 2.0, 2.0, 1.4, 2.0, 1.1, 0.8, 0.8]
+    plan_conf:
+      max_velocity: 0.65
+      max_acceleration: 1.8
+      max_jerk: 6.0
+      lower_limits: [-1.40, -1.20, -0.70, 0.20, -0.50, -0.45, -0.60,
+                     -1.40, -1.20, -0.70, 0.20, -0.50, -0.45, -0.60]
+      upper_limits: [-0.10, -0.10,  0.70, 1.55,  0.50,  0.45,  0.60,
+                     -0.10, -0.10,  0.70, 1.55,  0.50,  0.45,  0.60]
+      trajectory_interpolator:
+        - [1.3, -0.20, -0.15, 0.00, 0.35, 0.00, 0.00, 0.00,
+                -1.20, -0.30, 0.05, 1.32, 0.00, 0.00, 0.00]
+        - [0.55, -0.20, -0.15, 0.00, 0.35, 0.00, 0.00, 0.00,
+                 -1.20, -0.30, 0.42, 1.32, 0.15, 0.00, 0.10]
+        - [0.55, -0.20, -0.15, 0.00, 0.35, 0.00, 0.00, 0.00,
+                 -1.20, -0.30, -0.32, 1.32, -0.15, 0.00, -0.10]
+        - [0.55, -0.20, -0.15, 0.00, 0.35, 0.00, 0.00, 0.00,
+                 -1.20, -0.30, 0.42, 1.32, 0.15, 0.00, 0.10]
+        - [0.75, -0.20, -0.15, 0.00, 0.35, 0.00, 0.00, 0.00,
+                 -0.85, -0.28, 0.40, 1.20, 0.20, -0.10, 0.10]
+        - [1.1, -0.42, -1.00, -0.12, 0.52, 0.00, 0.05, -0.10,
+                -0.42, -1.00,  0.12, 0.52, 0.00, 0.05,  0.10]
+        - [0.9, -0.38, -0.35, -0.28, 0.82, -0.10, 0.00, -0.05,
+                -0.38, -0.35,  0.28, 0.82, 0.10, 0.00, 0.05]
+
+  # walk
+  rl_walk_leg:
+    joint_list: [left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint,
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint]
+    init_state: [0.4,  0.05, -0.31, 0.49, -0.21, 0.0,
+                -0.4, -0.05,  0.31, 0.49, -0.21, 0.0]
+    stiffness:  [30.0, 40.0, 35.0,  100.0, 35.0, 35.0,
+                 30.0, 40.0,  35.0, 100.0, 35.0, 35.0]
+    damping:    [3.0,  3.0,  4.0,   10.0,  0.5,  0.5,
+                 3.0,  3.0,   4.0,  10.0,  0.5,  0.5]
+    walk_step_conf:
+      action_scale: 0.5    # 推理的增量结果，缩放系数
+      decimation: 10       # 采样间隔
+      cycle_time: 0.7      # 步态周期
+      sw_mode: True        # 原地步态是否接受周期波函数
+      cmd_threshold: 0.05 
+    obs_scales:
+      lin_vel: 2.
+      ang_vel: 1.
+      dof_pos: 1.
+      dof_vel: 0.05
+      quat: 1.
+    onnx_conf:
+      policy_file: cfg/control_module/policy/rl_walk_leg.onnx
+      actions_size: 12
+      observations_size: 47
+      num_hist: 66
+      observations_clip: 100.
+      actions_clip: 100.
+    lpf_conf:
+      wc: 100.
+      ts: 0.001
+      paralle_list:
+        - left_ankle_pitch_joint
+        - left_ankle_roll_joint
+        - right_ankle_pitch_joint
+        - right_ankle_roll_joint
+
+  # leg and arm
+  rl_walk_leg_shoulder:
+    joint_list: [left_hip_pitch_joint, left_hip_roll_joint, left_hip_yaw_joint, left_knee_pitch_joint, left_ankle_pitch_joint, left_ankle_roll_joint, left_shoulder_pitch_joint,
+                right_hip_pitch_joint, right_hip_roll_joint, right_hip_yaw_joint, right_knee_pitch_joint, right_ankle_pitch_joint, right_ankle_roll_joint, right_shoulder_pitch_joint]
+    init_state: [0.4,  0.05, -0.31, 0.49, -0.21, 0.0,  0.15,
+                -0.4, -0.05,  0.31, 0.49, -0.21, 0.0,  0.15]
+    stiffness:  [60.0, 60.0, 40.0,  80.0, 40.0,  30.0, 20.0,
+                 60.0, 60.0, 40.0,  80.0, 40.0,  30.0, 20.0]
+    damping:    [6.0,  3.0,  3.0,   4.0,  2.0,   2.0,  3.0,
+                 6.0,  3.0,  3.0,   4.0,  2.0,   2.0,  3.0 ]
+    walk_step_conf:
+      action_scale: 0.5    # 推理的增量结果，缩放系数
+      decimation: 10       # 采样间隔
+      cycle_time: 1      # 步态周期
+      sw_mode: True        # 原地步态是否接受周期波函数
+      cmd_threshold: 0.05 
+    obs_scales:
+      lin_vel: 2.
+      ang_vel: 1.
+      dof_pos: 1.
+      dof_vel: 0.05
+      quat: 1.
+    onnx_conf:
+      policy_file: cfg/control_module/policy/rl_walk_leg_shoulder.onnx
+      actions_size: 14
+      observations_size: 53
+      num_hist: 66
+      observations_clip: 100.
+      actions_clip: 100.
+    lpf_conf:
+      wc: 100.
+      ts: 0.001
+      paralle_list:
+        - left_ankle_pitch_joint
+        - left_ankle_roll_joint
+        - right_ankle_pitch_joint
+        - right_ankle_roll_joint
+# ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑

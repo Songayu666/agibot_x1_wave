@@ -1,0 +1,30 @@
+* text=auto
+
+# Keep Linux scripts executable and compatible after cloning from Windows
+*.sh text eol=lf
+*.bash text eol=lf
+*.bashrc text eol=lf
+
+# Source and configuration files
+*.cc text eol=lf
+*.cpp text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.stl binary
+*.STL binary
+*.so binary
+*.a binary
+*.onnx binary
+

@@ -1,0 +1,43 @@
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output and downloaded dependencies
+build/
+_deps/
+cmake-build*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Logs, recordings and crash dumps
+logs/
+log/
+*.log
+*.bag
+*.db3
+*.mcap
+core
+core.*
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local environment and credentials
+.env
+.env.*
+*.pem
+*.key
+id_rsa
+id_ed25519
+
