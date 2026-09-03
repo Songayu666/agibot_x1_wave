@@ -1,135 +1,166 @@
-# Readme
+# 智元灵犀 X1 拟人动作控制
 
-## 简介
+[English](README.md)
 
-[智元灵犀X1](https://www.zhiyuan-robot.com/qzproduct/169.html) 是由智元研发并开源的模块化、高自由度人形机器人，X1的软件系统基于智元开源组件 `AimRT` 作为中间件实现，并且采用强化学习方法进行运动控制。
+本项目基于智元灵犀 X1 推理工程扩展，保留原有零位、站立、行走、MuJoCo 仿真和 DCU/EtherCAT 真机控制链路，并增加 16 个上肢及问候动作。
 
-本工程为 智元灵犀X1 的配套使用软件，包含了 模型推理、平台驱动、软件仿真 等多个功能模块。
+项目运行于 x86-64 Ubuntu 22.04，使用 ROS 2 Humble、GCC 13 和 CMake 3.26+，以 [AimRT](https://aimrt.org/) 为中间件，通过 ONNX Runtime 运行强化学习策略，并使用 MuJoCo 进行仿真。
 
-关于`AimRT`组件的详细教程可参考 [AimRT官方网站](https://aimrt.org/)。
+> **当前验证状态：** ROS 2 动作触发和状态转换已经正常工作，但 `wave_forearm` 在 MuJoCo 中开始执行时会使机器人倒地。因此新增动作目前**尚未通过仿真验收，禁止部署到真机**。详见[开发记录](DEVELOPMENT_NOTES.zh_CN.md#8-当前仿真问题)。
 
-![x1](doc/x1.jpg)
+![智元灵犀 X1](doc/x1.jpg)
 
-## 软件架构图
+## 已实现动作
 
-![sw_arch](doc/sw_arch.png)
+| 动作 | ROS 2 话题 | 执行命令 |
+| --- | --- | --- |
+| 前臂挥手 | `/wave_forearm` | `./wave_forearm.sh` |
+| 整臂挥手 | `/wave_arm` | `./wave_arm.sh` |
+| 手腕挥手 | `/wave_wrist` | `./wave_wrist.sh` |
+| 招手并模拟点头 | `/greet_nod` | `./run_action.sh greet_nod` |
+| 敬礼 | `/salute` | `./run_action.sh salute` |
+| 双手抱拳 | `/fist_greeting` | `./run_action.sh fist_greeting` |
+| 鼓掌 | `/clap` | `./run_action.sh clap` |
+| 双臂比心 | `/heart` | `./run_action.sh heart` |
+| 欢迎手势 | `/welcome` | `./run_action.sh welcome` |
+| 左右指向 | `/point_left`、`/point_right` | `./run_action.sh point_left` |
+| 擦汗 | `/wipe_sweat` | `./run_action.sh wipe_sweat` |
+| 挠头 | `/scratch_head` | `./run_action.sh scratch_head` |
+| 双臂舞蹈 | `/arm_dance` | `./run_action.sh arm_dance` |
+| 鞠躬挥手 | `/bow_wave` | `./run_action.sh bow_wave` |
+| 组合问候 | `/greeting_combo` | `./run_action.sh greeting_combo` |
 
-更多模块详细注解，请见 [开发指南](doc/tutorials.zh_CN.md)。
+机器人没有可控头部关节，因此 `greet_nod` 通过小幅腰部俯仰近似点头。项目不控制手指造型，鼓掌、比心、指向和抱拳均通过手臂整体姿态近似表达。
 
-## 目录结构
+## 软件架构
 
-```bash
-.
-├── build.sh              # 编译脚本
-├── cmake                 # 编译依赖的cmake脚本
-│   ├── GetAimRT.cmake
-│   ├── GetGTest.cmake
-│   └── NamespaceTool.cmake
-├── CMakeLists.txt        # 顶层 CMakeLists.txt
-├── format.sh             # 格式化脚本
-├── README.md             # 说明文档
-├── doc                   # 开发指南目录
-├── src                   # 源码目录
-│   ├── CMakeLists.txt    # 源码目录的 CMakeLists.txt
-│   ├── assistant         # ROS2仿真与示例工程目录
-│   ├── install           # 配置脚本目录
-│   ├── module            # 模块目录
-│   ├── pkg               # 部署目录
-│   └── protocols         # 协议目录
-└── test.sh               # 测试脚本
+```text
+手柄或 ROS 2 话题
+→ AimRT 状态机
+→ PD 或强化学习控制器
+→ /joint_cmd
+→ MuJoCo SimModule 或真机 DcuDriverModule
 ```
 
-## 运行方式
+新增动作只能从 `stand` 状态触发。动作开始时，控制器读取实时关节位置，将其作为轨迹起点和返回姿态。Ruckig 用于限制关键帧之间的速度、加速度和 jerk。
 
-### 启动准备
+## 环境要求
 
-- 安装 [GCC-13](https://www.gnu.org/software/gcc/gcc-13/)。
+- x86-64 Ubuntu 22.04
+- ROS 2 Humble
+- GCC/G++ 13
+- CMake 3.26+
+- ONNX Runtime
+- `libglfw3-dev` 和 `libdart-external-lodepng-dev`
+- 手柄不是必需品，也可以直接发布 ROS 2 状态话题
 
-- 安装 [cmake](https://cmake.org/download/) 3.26 或以上版本。
+真机运行还需要 X1 硬件、正确配置的 EtherCAT 接口、实时 Linux 环境、保护架或悬吊设备以及物理急停。
 
-- 安装 [ONNX Runtime](https://github.com/microsoft/onnxruntime) 。
-
-```bash
-sudo apt update
-sudo apt install -y build-essential cmake git libprotobuf-dev protobuf-compiler
-
-git clone --recursive https://github.com/microsoft/onnxruntime
-
-cd onnxruntime
-./build.sh --config Release --build_shared_lib --parallel
-
-cd build/Linux/Release/
-sudo make install
-```
-
-- 安装`ROS2 Humble`，并且配置好环境变量，具体可以参考 [ROS2 官网](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html)。
-
-- 安装仿真环境依赖。
+## 编译
 
 ```bash
-sudo apt install jstest-gtk libglfw3-dev libdart-external-lodepng-dev
-```
-
-- 若要启动实机调试，需要安装 Linux [实时内核补丁](https://wiki.linuxfoundation.org/realtime/start)。
-
-*由于 AimRT 的依赖较多，从默认的源下载依赖会非常慢甚至失败，我们提供了基于gitee源下载的环境变量 `DOWNLOAD_FLAGS` 在 `url_gitee.bashrc` 中，只需要在运行 `build.sh` 时，先 source 一下 `url_gitee.bashrc` 然后加上gitee源环境变量的参数即可。*
-
-准备好以上步骤后，在终端中执行以下命令：
-
-```bash
+cd /home/zhongde/agibot_ws/src/agibot_x1_wave
+conda deactivate 2>/dev/null || true
 source /opt/ros/humble/setup.bash
 source url_gitee.bashrc
-
-# 编译
 ./build.sh $DOWNLOAD_FLAGS
-
-# 测试
-./test.sh $DOWNLOAD_FLAGS
+chmod +x ./*.sh
 ```
 
-### 启动仿真
+修改 `src/module/**/cfg/` 下的配置后必须重新构建，因为运行配置会在构建时复制到 `build/cfg/`。
 
-启动之前需要先插入手柄接收器
+## 无手柄运行 MuJoCo 仿真
+
+终端 A：
 
 ```bash
-cd build/
-
+cd /home/zhongde/agibot_ws/src/agibot_x1_wave
+source /opt/ros/humble/setup.bash
+source build/ros2_setup.sh
+export LD_LIBRARY_PATH="$PWD/build/install/lib:${LD_LIBRARY_PATH:-}"
+cd build
 ./run_sim.sh
 ```
 
-### 启动真机
-
-首先导出当前动态库路径, **此操作只需要执行一次即可**.
+仿真初始状态为 `idle`，其 PD 刚度为 0，因此机器人可能在启动时倒地。随后在终端 B 切换到 `zero`：
 
 ```bash
-# 以root权限打开 “/etc/ld.so.conf”
-sudo vi /etc/ld.so.conf
-
-# 将以下路径添加到该文件的末尾
-/opt/ros/humble/lib
-{你的工程绝对路径}/build/install/lib
-
-# 刷新环境变量
-sudo ldconfig
+cd /home/zhongde/agibot_ws/src/agibot_x1_wave
+source /opt/ros/humble/setup.bash
+source build/ros2_setup.sh
+ros2 topic pub --once /zero_mode std_msgs/msg/Float32 '{data: 1.0}'
 ```
 
-准备启动.
+确认终端 A 出现 `Trigger event: [/zero_mode] -> zero` 后，在 MuJoCo 中点击一次 **Simulation → Reset**，然后进入 `stand`：
 
 ```bash
-cd build/
+ros2 topic pub --once /stand_mode std_msgs/msg/Float32 '{data: 1.0}'
+```
+
+正确启动顺序是：
+
+```text
+启动仿真 → zero → MuJoCo Reset → stand
+```
+
+进入 `stand` 后不要再次 Reset，否则仿真物理状态与控制器状态可能不同步。动作通过安全验证后，可以执行：
+
+```bash
+./wave_forearm.sh
+./return_to_stand.sh
+```
+
+目前除非正在定位已知倒地问题，否则应在执行动作前停止。
+
+## 真机运行
+
+新增动作必须先在 MuJoCo 中重复测试，确认无倒地、自碰撞、关节突跳和控制错误后，才能考虑部署真机。基础真机控制链路启动方式：
+
+```bash
+cd /home/zhongde/agibot_ws/src/agibot_x1_wave
+source /opt/ros/humble/setup.bash
+source build/ros2_setup.sh
+cd build
 ./run.sh
 ```
 
-### 手柄控制
+启动前应核对 `src/module/dcu_driver_module/cfg/dcu_x1.yaml` 中的 EtherCAT 网卡名称。`/stand_mode` 不能代替物理急停。
 
-具体控制方法请参考 [手柄控制模块](doc/joy_stick_module/joy_stick_module.zh_CN.md)。
+## 关键文件
 
-## 许可协议
+```text
+src/module/control_module/                   状态机及 PD/强化学习控制
+src/module/control_module/cfg/rl_x1.yaml     真机控制配置
+src/module/control_module/cfg/rl_x1_sim.yaml 仿真控制配置
+src/module/sim_module/                       MuJoCo 仿真与模型
+src/module/dcu_driver_module/                DCU/EtherCAT 真机驱动
+src/module/joy_stick_module/                 手柄输入
+run_action.sh                                动作统一入口
+WAVE_GUIDE.zh_CN.md                          动作与安全指南
+DEVELOPMENT_NOTES.zh_CN.md                   开发及问题排查记录
+```
 
-本工程提供的代码运行于 [AimRT](https://aimrt.org/) 框架之上。这是研究代码，预计会经常更改，并且不对特定用途的适用性做出任何保证。源代码根据[MULAN](https://spdx.org/licenses/MulanPSL-2.0.html)许可协议发布。
+本地 `build/` 目录包含大量构建产物，不应提交到 GitHub。
 
-## 使用说明
+## 文档
 
-如果您对该仓库有任何疑问或问题，请使用 `Issues`。
+- [English README](README.md)
+- [动作与安全指南](WAVE_GUIDE.zh_CN.md)
+- [开发记录](DEVELOPMENT_NOTES.zh_CN.md)
+- [原始 X1 开发指南](doc/tutorials.zh_CN.md)
+- [手柄模块](doc/joy_stick_module/joy_stick_module.zh_CN.md)
+- [DCU 驱动模块](doc/dcu_driver_module/dcu_driver_module.zh_CN.md)
+- [强化学习控制模块](doc/rl_control_module/rl_control_module.zh_CN.md)
 
-请不要通过电子邮件联系我们，因为可能无法回复。如果您想贡献代码，请简单地 fork 该仓库（或如果您是协作者，可以创建一个分支），然后进行更改并提交 pull request 给我们。
+## 安全要求
+
+- 每个动作必须先在 MuJoCo 中反复测试，再考虑部署真机；
+- 真机首次测试必须使用保护架或悬吊；
+- 另一名操作人员应始终握住物理急停；
+- 出现振荡、异响、关节突跳、失稳、跟踪异常或 DCU 掉线时立即急停；
+- 未重新完成仿真验收前，不提高真机关节限制、速度、加速度、jerk 或 PD 增益；
+- 近头动作和双臂接近动作必须逐帧检查自碰撞。
+
+## 许可证
+
+本研究项目运行于 [AimRT](https://aimrt.org/) 框架之上，使用[木兰宽松许可证第 2 版](LICENSE.txt)发布，不对特定用途的适用性提供保证。
